@@ -1,0 +1,16 @@
+
+zuul:
+    routes:
+        taobao-gwt-service:
+            path: /taobao-service/**
+#            url: http://gw.api.taobao.com
+            url: http://127.0.0.1:8999
+            service-id: opentao
+server:
+    port: 8099
+logging:
+    org.xinghuo: debug
+
+spring:
+    application:
+        name: zuul-service
