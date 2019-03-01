@@ -1,4 +1,4 @@
-package org.xinghuo.zuul.filter;
+package com.xiaoshijie.gateway.filter;
 
 import com.netflix.zuul.ZuulFilter;
 import com.netflix.zuul.context.RequestContext;

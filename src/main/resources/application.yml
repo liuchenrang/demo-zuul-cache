@@ -2,9 +2,10 @@
 zuul:
     routes:
         taobao-gwt-service:
-            path: /taobao-service/**
-#            url: http://gw.api.taobao.com
-            url: http://127.0.0.1:8999
+#            path: /taobao-service/**
+            #            url: http://127.0.0.1:8999
+            url: http://gw.api.taobao.com
+            path: /top-service/**
             service-id: opentao
 server:
     port: 8099
@@ -14,3 +15,31 @@ logging:
 spring:
     application:
         name: zuul-service
+
+    redis:
+        host: 127.0.0.1
+        password:
+
+    aop:
+        proxy-target-class: true
+        auto: true
+    datasource:
+        type: com.zaxxer.hikari.HikariDataSource
+        url: jdbc:mysql://127.0.0.1:3306/xjs_master?characterEncoding=UTF-8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&useUnicode=true
+        driver-class-name: com.mysql.jdbc.Driver
+        username: root
+        password:
+        hikari:
+            maximum-pool-size: 3
+
+#mybatis-plus:
+#    mapper-locations: classpath:mapper/**/*Mapper.xml
+#    #  config-location: classpath:mybatis-config.xml
+#    type-aliases-package: com.caijing.ordercenter.*.*.entity
+#    global-config:
+#        banner: false
+#        db-config:
+#            logic-delete-value: 1
+#            logic-not-delete-value: 0
+#    configuration:
+#        use-generated-keys: true

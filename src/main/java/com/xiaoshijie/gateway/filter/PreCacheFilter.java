@@ -1,32 +1,27 @@
-package org.xinghuo.zuul.filter;
+package com.xiaoshijie.gateway.filter;
 
-import com.netflix.util.Pair;
 import com.netflix.zuul.context.RequestContext;
+import com.xiaoshijie.gateway.http.entity.ApiGate;
+import com.xiaoshijie.gateway.strategy.StrategyContext;
+import com.xiaoshijie.gateway.http.service.IStrategyService;
+import com.xiaoshijie.gateway.utils.ApiGateUtils;
+import com.xiaoshijie.gateway.utils.FilterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cloud.netflix.zuul.filters.ZuulProperties;
-import org.xinghuo.zuul.response.WrapperResponse;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
-import java.util.List;
-import java.util.Map;
 
 public class PreCacheFilter extends CachingBaseFilter {
     private Logger logger = LoggerFactory.getLogger(getClass());
     private int order;
-    private ZuulProperties properties;
-
+    private IStrategyService strategyService;
     public PreCacheFilter(CacheManager cacheManager, int order, ZuulProperties properties) {
 
         super(cacheManager);
-
-
         this.order = order;
-        this.properties = properties;
     }
 
     @Override
@@ -39,46 +34,37 @@ public class PreCacheFilter extends CachingBaseFilter {
         return order;
     }
 
+
     @Override
     public boolean shouldFilter() {
         RequestContext ctx = RequestContext.getCurrentContext();
-        HttpServletRequest req = ctx.getRequest();
-
-        Map<String, ZuulProperties.ZuulRoute> routes = properties.getRoutes();
-        ZuulProperties.ZuulRoute zuulRoute = routes.get("taobao-gwt-service");
-        ctx.set(SERVICE_ID, zuulRoute.getServiceId());
-        if (!getVerb(req).equals("GET")) {
-            return false;
-        }
-
-        String serviceId = serviceId(ctx);
-        Cache cache = cache(ctx);
-        if ((serviceId != null) && (cache != null)) {
+        ApiGate apiGate = FilterUtils.buildApiGate(ctx);
+        ctx.set("apiGate", apiGate);
+        ctx.set("serviceName", FilterUtils.getServiceName(ctx));
+        StrategyContext context = strategyService.queryApiCacheConfig(apiGate.getAppid(), apiGate.getMethod());
+        if (context != null && context.getApiCacheConfig() != null && context.getApiCacheConfig().getStatus()) {
             return true;
         }
         return false;
+
     }
 
     @Override
     public Object run() {
         RequestContext ctx = RequestContext.getCurrentContext();
-
         HttpServletRequest req = ctx.getRequest();
-        Cache cache = cache(ctx);
+        Cache cache = cacheManager.getCache(FilterUtils.getServiceName(ctx));
         if (cache != null) {
-            String key = cacheKey(req);
+            ApiGate apiGate = (ApiGate) ctx.get("apiGate");
+            String key = ApiGateUtils.getGateHashId(apiGate);
             Cache.ValueWrapper valueWrapper = cache.get(key);
             if (valueWrapper != null) {
                 // TODO cache should probably not store HttpServletResponse
                 String res = (String) valueWrapper.get();
                 if (res != null) {
-                    log.info("Filling response for '{}' from '{}' cache", key, cache.getName());
                     ctx.setSendZuulResponse(false);
                     ctx.setDebugRequest(true);
-                    ctx.addZuulResponseHeader("xx", "yy");
-
                     ctx.setResponseBody(res);
-
                     ctx.set(CACHE_HIT, true);
                     return res;
                 }
@@ -88,8 +74,4 @@ public class PreCacheFilter extends CachingBaseFilter {
         return null;
     }
 
-    private boolean isGzipResponse(RequestContext ctx) {
-        List<Pair<String, String>> originResponseHeaders = ctx.getOriginResponseHeaders();
-        return originResponseHeaders.stream().filter(stringStringPair -> "content-encoding".equals(stringStringPair.first())).count() > 0;
-    }
 }
